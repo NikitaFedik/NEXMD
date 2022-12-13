@@ -15,10 +15,10 @@
    subroutine davidson(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct,qm2_struct,qm2ds, qmmm_struct)
    use qmmm_module,only:qm2_structure, qmmm_mpi_structure !cml-test
    use qm2_davidson_module
-   use qmmm_struct_module, only : qmmm_struct_type  
-   use cosmo_C, only : cosmo_C_structure            !! solvents ??? 
-   use qm2_params_module,  only : qm2_params_type   !! SQM constant 
-   use qmmm_nml_module   , only : qmmm_nml_type     !! QM/MM interface???
+   use qmmm_struct_module, only : qmmm_struct_type
+   use cosmo_C, only : cosmo_C_structure
+   use qm2_params_module,  only : qm2_params_type
+   use qmmm_nml_module   , only : qmmm_nml_type
 
    implicit none
    type(qmmm_nml_type),intent(inout) :: qmmm_nml
@@ -44,42 +44,39 @@
 !  Initialize Davidson
 !
 !--------------------------------------------------------------------
-   write(6,*) 'INIT'
-   ! Nb - basis size, total number of atomic orbitals
-   Lt=qm2ds%Nb*(qm2ds%Nb+1)/2 !! Lt - number of non-zero element for tridiagonal matrix , Nb here is matrix dim R(M,M), not used
-   Mb=qm2ds%Nb**2             !!! ??? Not used? Basis squared?? 
+!
+   Lt=qm2ds%Nb*(qm2ds%Nb+1)/2
+   Mb=qm2ds%Nb**2
    one=1 
-   lprint=qm2ds%verbosity     !! verbosity flag
-   nd=qm2ds%nd                ! Dimension of Krylov expansion in Davidson
+   lprint=qm2ds%verbosity       
+
+   nd=qm2ds%nd 
 
    iloops=0
 
-   if(qm2ds%dav_guess==0) then  ! do not use previoud Davison as guess
+   if(qm2ds%dav_guess==0) then
       qm2ds%istore=0 ! overwriting qm2ds%istore to not use guess
    end if
 
 ! Split Mx into batches of j1 size
-   j1=nd/qm2ds%idavfrac   !! idavfrac = Fraction of the davidson space for 1 batch
-   j1=min(j1,qm2ds%Mx)    !! Mx = number of excited states to be computed 
-   nd1=min(j1+2,nd/2)     !! 
-   if (qm2ds%mdflag.ge.0) j1=qm2ds%Mx !! batch size = number of excited states to be computed??
-   
-   ! No shift is allowed for MD points
-                                      !!?? What is 
+   j1=nd/qm2ds%idavfrac
+   j1=min(j1,qm2ds%Mx)
+   nd1=min(j1+2,nd/2)
+   if (qm2ds%mdflag.ge.0) j1=qm2ds%Mx ! No shift is allowed for MD points
       
 
-   if (qm2ds%irflag.gt.1) then ! if > 1
+   if (qm2ds%irflag.gt.1) then
 !     Calculations will start from irflag state for ceo
       j0=qm2ds%irflag-1
       !write(6,*)"begin at ", j0,qm2ds%Mx,qm2ds%irflag
-      if (j0.gt.qm2ds%Mx) then ! Mx = number of excited states
+      if (j0.gt.qm2ds%Mx) then
          write(6,*) 'Looks like irflag= ', qm2ds%irflag
          write(6,*) 'Show that states Mx= ',qm2ds%Mx
          write(6,*) 'are already calculated, exiting'
 
          stop 
       end if
-!----------------- Read units -----------------------------
+
 !     Read irflag-1 states 
       open (qm2ds%modes_unit,file=trim(qm2ds%modes_b),form='unformatted',status='old')
       open (qm2ds%ee_unit,file=trim(qm2ds%ee_b),status='old')
@@ -97,18 +94,17 @@
    else    ! Assume start from the beginning 
       j0=0
    end if
-!-----------------------------------------------------------------
 
-   qm2ds%Mj=j0 !! what the hell is Mj??
+   qm2ds%Mj=j0
 
    if (lprint.gt.1) then
       write(6,*) 'Davidson parameters'
       write(6,*) 'mdflag=',qm2ds%mdflag
       write(6,*) 'irflag=',qm2ds%irflag
-      write(6,*) 'M4=',qm2ds%Ncis       ! size of CIS matrix
-      write(6,*) 'Mx=',qm2ds%Mx         ! number of excited states to be computed 
-      write(6,*) 'Mj=',qm2ds%Mj         ! ???
-      write(6,*) 'nd=',nd               !
+      write(6,*) 'M4=',qm2ds%Ncis
+      write(6,*) 'Mx=',qm2ds%Mx
+      write(6,*) 'Mj=',qm2ds%Mj
+      write(6,*) 'nd=',nd 
       write(6,*) 'nd1=',nd1
       write(6,*) 'j1=',j1
       write(6,*)'qm2ds%istore=',qm2ds%istore
@@ -132,11 +128,11 @@
 !  Begin big loop
 !--------------------------------------------------------------------
 ! find many vectors:
-10 continue !! 10 statement label, probably for goto or loop termination
-   if (j0.lt.qm2ds%Mx) then ! less than Mx, N excited states to be computed
-   write(6,*) '====== BIG LOOP 10 ======, ITER ',iloops
+10 continue
+   if (j0.lt.qm2ds%Mx) then 
+
    iloops=iloops+1
-   j1=min(j1,(qm2ds%Mx-j0)) !! found vectors - requested vectors
+   j1=min(j1,(qm2ds%Mx-j0))
    nd1=min(j1+2,nd/2)
 
    if (lprint.gt.3) then
@@ -146,44 +142,24 @@
       write(6,*) 'out of requested ',qm2ds%Mx, ' states'
       write(6,*) 'This batch will seek',j1,' vectors'
 
-      write(6,*) 'qm2ds%fs', qm2ds%fs
-      write(6,*) 'qm2ds%e0', qm2ds%e0(j0)
       if(j0.gt.0) write(6,*) 'Shift is',qm2ds%fs+qm2ds%e0(j0),' eV'
    end if 
 
 ! order quasidiagonal:
-   ! _REAL_,pointer::ehf(:) !!
-   ! qm2ds%ehf=>qmmm_scratch%mat_diag_workspace(1:qm2_struct%norbs,1)
-   write(6,*) 'D qm2ds%ehf', qm2ds%ehf !!
-   !write(6,*) 'D qm2ds%ehf.shape', shape(ehf) !!
    i=0
    do ip=1,qm2ds%Np
     do ih=1,qm2ds%Nh
        i=i+1
-      !  write(6,*) 'i in order quasidiagonal',i
-      !  write(6,*) 'qm2ds%ehf(ih+qm2ds%Np)', qm2ds%ehf(ih+qm2ds%Np)
-      !  write(6,*) 'qm2ds%ehf(ip)', qm2ds%ehf(ip) 
-       qm2ds%rrwork(i)=qm2ds%ehf(ih+qm2ds%Np)-qm2ds%ehf(ip) ! Lancos vectors(i) = 
-       write(6,*) 'qm2ds%rrwork(i)', qm2ds%rrwork(i)
+       qm2ds%rrwork(i)=qm2ds%ehf(ih+qm2ds%Np)-qm2ds%ehf(ip)
     end do
    end do
 
-   write(6,*) 'qm2ds%rrwork before sort' !!
-   write(6,*)  qm2ds%rrwork !!
-   write(6,*)'qm2ds%rrwork before sort - SHAPE', shape(qm2ds%rrwork) !!
-
-   call rrdpsort(qm2ds%rrwork,qm2ds%Ncis,qm2ds%ix,1) !!  return the permutation vector resulting from
-
-   write(6,*) 'D qm2ds%rrwork AFTER sort' !!
-   write(6,*)  qm2ds%rrwork !!
-   write(6,*)'D qm2ds%rrwork AFTER sort - SHAPE', shape(qm2ds%rrwork) !!
-
-   !!!!  sorting dx in increasing order and do not sort dx.
+   call rrdpsort(qm2ds%rrwork,qm2ds%Ncis,qm2ds%ix,1) 
 !  Account for found vectors
    do j=1,j0
     do i=1,qm2ds%Ncis
-       qm2ds%rrwork(i)=qm2ds%rrwork(i)+(qm2ds%fs+qm2ds%e0(j0)) & !! ?? Wilkinson shift maybe??
-          *abs(qm2ds%v0(i,j)**2-qm2ds%v0(qm2ds%Ncis+i,j)**2)     !! ??
+       qm2ds%rrwork(i)=qm2ds%rrwork(i)+(qm2ds%fs+qm2ds%e0(j0)) &
+          *abs(qm2ds%v0(i,j)**2-qm2ds%v0(qm2ds%Ncis+i,j)**2)
     end do
    end do
 
@@ -194,8 +170,8 @@
       qm2ds%e0,qm2ds%v0,kflag,qm2ds%ix, &
       qm2ds%rrwork(1),qm2ds%rrwork(2*qm2ds%Ncis+1), &
       qm2ds%rrwork(4*qm2ds%Ncis+1), &
-      nd,nd1,qm2ds%vexp1,qm2ds%vexp,qm2ds%ray,qm2ds%rayv, &
-      qm2ds%rayvL,qm2ds%rayvR,qm2ds%raye,qm2ds%raye1, &
+      nd,nd1,qm2ds%vexp1,qm2ds%vexp,qm2ds%ray,qm2ds%rayv,qm2ds%rayvL, &
+      qm2ds%rayvR,qm2ds%raye,qm2ds%raye1, &
       qm2ds%ray1,qm2ds%ray1a,qm2ds%ray2,qm2ds%idav,qm2ds%istore)
 
 ! Printing out found eigenvalues, error and tolerance
@@ -237,7 +213,7 @@
 ! End big loop
 !
 !--------------------------------------------------------------------
- write(6,*)'D I am HERE 70'
+!
  70   continue
 
 ! end find many vectors
@@ -251,8 +227,6 @@
          if(qm2ds%idav==1) then
             do i=1,qm2ds%Ncis
                qm2ds%v0(i+qm2ds%Ncis,j)=0.0
-!               write(6,*)'D m2ds%v0(i+qm2ds%Ncis,j)', qm2ds%v0(i+qm2ds%Ncis,j) !!
-               
             end do
          end if
 ! end CIS
@@ -261,16 +235,14 @@
             -ddot(qm2ds%Ncis,qm2ds%v0(qm2ds%Ncis+1,j),one, &
             qm2ds%v0(qm2ds%Ncis+1,j),one)
 
-         write(6,*)'D fn', fn !!
+
          f=1/sqrt(abs(fn))
          call dscal(qm2ds%Nrpa,f,qm2ds%v0(1,j),one)
-!         write(6,*)'D qm2ds%v0(1,j) after dscal', qm2ds%v0(1,j) !!
+
       end do
-      write(6,*)'D qm2ds%v0', qm2ds%v0 !!
+
 !     write to the hard disk
-      write(6,*)'D qm2ds%e0 before sorting', qm2ds%e0 !!
       call rrdpsort(qm2ds%e0,qm2ds%Mx,qm2ds%kx,2)
-      write(6,*)'D qm2ds%e0 AFTER sorting', qm2ds%e0 !!
 
       if (qm2ds%mdflag.lt.0) then
          open (qm2ds%modes_unit,file=trim(qm2ds%modes_b),form='unformatted')
@@ -306,18 +278,10 @@
 !
 !********************************************************************
 !
-   subroutine davidson0(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct,qm2_struct,qm2ds,&
-      qmmm_struct,M4,lprint,ftol0,ftol1,ferr, &
-      Np,Nh,j0,j1,&
-      e0,v0,kflag,ix,&
-      ee2,eta,&
-      xi, &
-      nd,nd1,vexp1,vexp,ray,rayv,&
-      rayvL,rayvR,raye,raye1, &
+   subroutine davidson0(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct,qm2_struct,qm2ds,qmmm_struct,M4,lprint,ftol0,ftol1,ferr, &
+      Np,Nh,j0,j1,e0,v0,kflag,iee2,ee2,eta,xi, &
+      nd,nd1,vexp1,vexp,ray,rayv,rayvL,rayvR,raye,raye1, &
       ray1,ray1a,ray2,idav,istore)
-
-   !  ix is actually ix, args are positional !!!!!!!!!!!!!!!!!!!!!
-
    use qm2_davidson_module   
    use cosmo_C,only:cosmo_C_structure
    use qmmm_struct_module, only : qmmm_struct_type
@@ -338,9 +302,7 @@
 
    integer Np,Nh,M4,lprint,kflag,nd,nd1,nd1_old,j0,j1
    integer one,i,j,k,n,m,icount,idav,istore,iloop,itarget
-   integer info,ix(qm2ds%Ncis)
-   integer test(qm2ds%Ncis)
-
+   integer info,iee2(qm2ds%Ncis)
    !integer l,u,c
    _REAL_ ftol0,ftol1,ferr(j1+j0),ddot,fn,f2m
    _REAL_ f0,f1,f2,f3,f4,tresh2
@@ -368,10 +330,6 @@
    call clearing(nd,raye)
    call clearing(nd,raye1)
 
-   write(6,*)'test', test
-   write(6,*)'ix', ix
-   write(6,*)'test shape', shape(test)
-
    one=1
 
    icount=0
@@ -397,64 +355,37 @@
 
 ! vexp and vexp1 are now zero !!JAB
 ! assign trial vectors based on the MO
-   itarget=0
-
-   write(6,*)'D nd1', nd1
+   itarget =0
    do j=1,nd1
-      write(6,*)'j1', j
 80    continue
 
-      write(6,*)'D HERE 80'
-
       itarget=itarget+1
-      write(6,*)'itarget', itarget
-!      if (itarget.ge.Np*Nh) goto 85 ! Restart vectors
-      ! if (itarget.ge.Np*Nh) then 
-      !    write(6,*)'Restart vectors: size > CIS  matrix' 
-      !    goto 85 ! Restart vectors if size > CIS  matrix 
-      ! end if
-     if (itarget.ge.Np*Nh) goto 85 ! Restart vectors
-      ! if (itarget.ge.Np*Nh) then 
-      !    write(6,*)'Restart vectors: size > CIS  matrix' 
-      !    goto 85 ! Restart vectors if size > CIS  matrix 
-      ! end if
-
-
+      write(6,*)'itarget ',itarget
+      if (itarget.ge.Np*Nh) goto 85 ! Restart vectors
       f1=0.0
-      write(6,*)'D ix', ix !!
-      write(6,*)'D ix shape', shape(ix) !!
-      write(6,*)'D Ncis', qm2ds%Ncis !!
+
       do i=1,j0
-         f1=f1+v0(ix(itarget),i)**2+v0(ix(itarget)+M4,i)**2
-         write(6,*)'D f1', f1 !!
+         f1=f1+v0(iee2(itarget),i)**2+v0(iee2(itarget)+M4,i)**2
       end do
 
-      if (f1.ge.tresh2) cycle  ! MO pair is not accepted !! taken from aimc_openshell
-      if (lprint.gt.2) write(6,*)'++ START ',itarget,ix(itarget)
+      if (f1.ge.tresh2) goto 80  ! MO pair is not accepted
+      if (lprint.gt.2) write(6,*)'++ START ',itarget,iee2(itarget)
 
-      vexp1(ix(itarget),j) = vexp1(ix(itarget),j)+1.0
-      write(6,*) 'D ix(itarget)', ix(itarget)
-      write(6,*) 'D rrwork(ix)', rrwork(ix)
- !     write(6,*)'vexp1', vexp1(ix(itarget),j) !!
+      vexp1(iee2(itarget),j) = vexp1(iee2(itarget),j)+1.0
    end do
-   write(6,*)'vexp1', vexp1 !!
+
 !  Orthogonolize trial vectors (vexp1) to found eigenvectors, some strange
 !  function XI(V0) !!JAB
  
   !!ORTHONORMALIZE WITH XI=X+Y??
-   write(6,*)'HERE'
-   do i=1,j0            !  does not inter loop while none found
-      write(6,*)'DDD', i
+   
+   do i=1,j0
       !!MAKE XI
       do k=1,M4
-         write(6,*)'D M4', M4
-         write(6,*)'D test1'
          xi(k)=v0(k,i)+v0(k+M4,i) !xi=X+Y??
-         write(6,*)'k xi', k 
       end do
       !!NORMALIZE
       f2=ddot(M4,xi,one,xi,one) !xi.xi
-      write(6,*)'f2 ', f2
       f2=1.0D0/sqrt(abs(f2)) !normalization constant
 
       call dscal(M4,f2,xi,one) !normalize xi
@@ -490,7 +421,6 @@
 
 !  ORTHOGONALIZE AND NORMALIZE TRIAL VECTORS
 90     continue
-   write(6,*)'HERE 90'
    do j=1,nd1
 
       !!NORMALIZE
@@ -518,7 +448,7 @@
    end do 
 
 !  CHECK ORTHOGONALITY OF EXPANSIONS
-   if(lprint.gt.0) write(6,*) 'Check expansion to expansion'
+   if(lprint.gt.3) write(6,*) 'Check expansion to expansion'
    do j=1,nd1
       do i=1,nd1
          f1= ddot(M4,vexp1(1,i),one,vexp1(1,j),one)
@@ -528,15 +458,10 @@
 
    if (nd1.le.j1) j1=nd1
 ! **** End assign Davidson trial vectors
-
-10 continue !! go to very beggining?
-
+10 continue
 ! **** Write some things, check the number of iterations, etc.
    icount=icount+1 !iteration counter
-   write(6,*) '====='
-   write(6,*) 'icount', icount
-   write(6,*) '====='
-   if(lprint.gt.0) write(6,*) 'COUNT=',icount,'Exp=',nd1
+   if(lprint.gt.4) write(6,*) 'COUNT=',icount,'Exp=',nd1
    if(icount.gt.qm2ds%icount_M) then
          write(6,*) "Number of davidson iterations exceeded, exiting"
          stop
@@ -569,7 +494,7 @@
       !NEW EXPANSION VECTORS
       if(idav.eq.2) then ! RPA 
          do j=1,j1
-          do i=1,M4 ! M4 = Ncis
+          do i=1,M4
              if(j.le.nd1) vexp1(i,j)=v0(i,j+j0)+v0(i+M4,j+j0)
              if((j+j1).le.nd1) vexp1(i,j+j1)=v0(i,j+j0)-v0(i+M4,j+j0)
           end do
@@ -684,7 +609,7 @@
    write(6,*)'info00',info 
 
    allocate(dtmp(4*nd1))
-   call dsyev ('v','u',nd1,rayvR,nd,raye,dtmp,4*nd1,info) !! dsyev - eigensolver
+   call dsyev ('v','u',nd1,rayvR,nd,raye,dtmp,4*nd1,info) 
         !Eigenvalues of ray1 in raye and eigenvectors in rayvR
    write(6,*)'info000',info
    write(6,*)'info Nrpa,nd,nd1',qm2ds%Nrpa,nd,nd1
@@ -706,7 +631,7 @@
    call dgemm('N','N',nd1,nd1,nd1,f1,ray2,nd,ray1a,nd,f0,rayv,nd)
    call dgemm('N','N',nd1,nd1,nd1,f1,ray1a,nd,rayv,nd,f0,ray,nd)
    call dcopy(nd*nd,ray,one,rayv,one)
-   call symmetr(nd,rayv) ! symmetrize the matrix
+   call symmetr(nd,rayv)
 
 
 ! find eigenvalues and eigenvectors of ray

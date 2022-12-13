@@ -10,24 +10,24 @@
    verbosity=5, ! QM/MM output verbosity (0-minimum, 5-maximum)
    ! [1 for dynamics and optimization, 5 for others]
    printcharges=0, ! Print (1) or do not print (0) Mulliken charges of QM atoms [0]
-   printdipole=0, ! (0) Unrelaxed transitions, (1) Unrelaxed transitions plus 
+   printdipole=2, ! (0) Unrelaxed transitions, (1) Unrelaxed transitions plus 
    ! total molecular, or (2) Unrelaxed/relaxed transitions plus 
    ! total molecular [1 for dynamics, 2 for optimization and single-point]
    printbondorders=0, ! (0) No or (1) Yes [0]
    ! *** UNDER DEVELOPMENT, DO NOT USE ***
    density_predict=0, ! (0) None, (1) Reversible MD, 
    ! or (2) XL-BOMD [0] *** ALL ARE UNDER DEVELOPMENT, DO NOT USE ***
-   itrmax=50, ! Max SCF iterations for ground state 
+   itrmax=300, ! Max SCF iterations for ground state 
    ! (negative to ignore convergence) [300]
 
    !***** Excited-State Parameters
-   exst_method=1, ! CIS (1) or RPA (2) [1]
+   exst_method=2, ! CIS (1) or RPA (2) [1]
    dav_guess=1, ! Restart Davidson from (0) Scratch, (1) Previous, 
    ! or (2) XL-BOMD [1] *** (2) IS UNDER DEVELOPMENT, DO NOT USE ***
    ftol0=1.0d-7, ! Acceptance tolerance (|emin-eold|) [1.0d-5]
    ftol1=1.0d-8, ! Acceptance tolerance for residual norm [1.0d-5] 
    ! *** UNDER DEVELOPMENT, DO NOT USE ***
-   dav_maxcyc=10, ! Max cycles for Davidson diagonalization 
+   dav_maxcyc=200, ! Max cycles for Davidson diagonalization 
    ! (negative to ignore convergence) [100]
    calcxdens=.false., ! Print (.true.) or do not print (.false.) 
    ! excited-to-excited transition dipole moments [.false.]
@@ -54,19 +54,19 @@
 
 &moldyn
    !***** General Parameters
-   natoms=3, ! Number of atoms 
+   natoms=15, ! Number of atoms 
    ! (must be equal to number of atoms in system)
    rnd_seed=1, ! Seed for the random number generator
-   bo_dynamics_flag=1, ! (0) Non-BO or (1) BO [1]
-   exc_state_init=0, ! Initial excited state (0 - ground state) [0]
-   n_exc_states_propagate=4, ! Number of excited states [0]
+   bo_dynamics_flag=0, ! (0) Non-BO or (1) BO [1]
+   exc_state_init=3, ! Initial excited state (0 - ground state) [0]
+   n_exc_states_propagate=3, ! Number of excited states [0]
 
    !***** Dynamics Parameters
    time_init=0.0, ! Initial time, fs [0.0]
    time_step=0.1, ! Time step, fs [0.1]
    n_class_steps=0, ! Number of classical steps [1]
    n_quant_steps=0, ! Number of quantum steps for each classical step [4]
-   moldyn_deriv_flag=0, ! (0) None, (1) Analytical, or (2) Numerical [1]
+   moldyn_deriv_flag=1, ! (0) None, (1) Analytical, or (2) Numerical [1]
    num_deriv_step=1.0d-5, ! Displacement for numerical derivatives, A [1.0d-3]
    rk_tolerance=1.0d-6, ! Tolerance for the Runge-Kutta propagator [1.0d-7]
 
@@ -104,9 +104,14 @@
 &endmoldyn
 
 &coord
-8       -0.368758544      0.000000000     -1.211413881
-1       -0.368758544      0.759337000     -0.615370881
-1       -0.368758544     -0.759337000     -0.615370881
+7         -3.65244        3.21851        0.00047
+6         -4.00999        1.82021       -0.00109
+1         -5.06793        1.68301       -0.31483
+1         -3.88434        1.40009        1.01938
+1         -3.35506        1.26668       -0.70701
+8         -4.45590        4.04510       -0.30972
+8         -2.54971        3.55138        0.31281
+
 &endcoord
 
 &veloc
@@ -124,3 +129,4 @@
   0.00  0.00
   0.00  0.00
 &endcoeff
+

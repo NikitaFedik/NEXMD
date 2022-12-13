@@ -1,6 +1,6 @@
 FC = gfortran
 CC = gcc
-LINALG = -llapack -lblas
+LINALG =  -L/auto/nest/nest/u/fns/soft/linalg -llapack -lblas
 
 MODCMD = -module
 NAESMDDIR = naesmd
@@ -372,6 +372,7 @@ pgi_GOTO:   nexmd.exe
 
 gnu:  FC = gfortran
 gnu:  CC = gcc
+# gnu:  LINALG = -llapack -L/auto/nest/nest/u/fns/soft/linalg/liblapack.a -lblas -L/auto/nest/nest/u/fns/soft/linalg/libblas.a
 gnu:  FFLAG =  -O3 -mcmodel=medium
 gnu:  LDFLAGS = $(FFLAG)
 gnu:  nexmd.exe
@@ -385,7 +386,7 @@ gnu_mkl: nexmd.exe
 
 gnu_debug:  FC = gfortran
 gnu_debug:  CC = gcc
-gnu_debug:  FFLAG = -g 
+gnu_debug:  FFLAG = -ggdb -O0  
 gnu_debug:  LDFLAGS = $(FFLAG)
 gnu_debug:  nexmd.exe
 
