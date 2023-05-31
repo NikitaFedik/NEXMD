@@ -720,7 +720,7 @@ subroutine qm2_fock2_2atm(qm2_params,qm2_struct,qmmm_struct, F, PTOT, W, orb_loc
 end subroutine qm2_fock2_2atm
 
 ! CML Added to SQM12
-subroutine qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
+subroutine  qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
 !
 ! *********************************************************************         
 !                                                                               
@@ -749,6 +749,7 @@ subroutine qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
    use qm2_params_module,  only : qm2_params_type
    use qmmm_module, only : qmmm_mpi_structure
    use qmmm_struct_module, only : qmmm_struct_type
+   use qm2_davidson_module ! added for debugging
 
    implicit none
 
@@ -756,62 +757,116 @@ subroutine qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
    type(qm2_params_type), intent(inout) :: qm2_params
    type(qmmm_struct_type), intent(inout) :: qmmm_struct
 
-   _REAL_, intent(inout) :: F(*)
+   _REAL_, intent(inout) :: F(*) ! debug
    _REAL_, intent(in) :: PTOT(*)
   
-   integer ii,ia,ib,ka,l,m,j,iminus,iplus,icc
+   integer ii,ia,ib,ka,l,m,j,iminus,iplus,icc, i
    _REAL_ ptpop, GSSII, GSPII, GPPII, GP2II, HSPII 
    _REAL_ GSPIIHSPII, GSPIIHSPIIPTK, HSPIIGSPII, GP2IIGPPII
    _REAL_ PTOTKA, PTOTL, PTPOPTL, GPPIIGP2II
 
-   ! Going through all the quantum atoms
+   ! Going through all the quantum atoms ! what the hell is that comment? 
+  ! write (6,*) 'FOCK 1 SKEW' 
+  ! do i = 1,  21
+     ! write(6, '(F8.5)') F(i)
+   !end do
+
+   ! call print_1d('PTOT', PTOT)
+   ! write (6,*) 'PTOT', PTOT 
+  ! do i = 1,  21
+      !write(6, '(F8.5)') 'PTOT i', PTOT(i)
+    !  write(6, *) 'PTOT i', PTOT(i)
+  ! end do
+
+   write(6, *) 'qm2_params%pascal_tri2', qm2_params%pascal_tri2
+   write(6, *) 'qm2_params%pascal_tri1', qm2_params%pascal_tri1
+
    do II=qmmm_mpi%nquant_nlink_start,qmmm_mpi%nquant_nlink_end
 
-      GSSII=qm2_params%onec2elec_params(1,II)
-      IA=qm2_params%orb_loc(1,II)
+   !  wriTE (6,*) 'II', II    
+      GSSII=qm2_params%onec2elec_params(1,II) ! 1/2 gss
+     ! wriTE (6,*) 'GSSII', GSSII              
+
+      IA=qm2_params%orb_loc(1,II)             ! 1, 5, 6 for H2O
+      !write (6,*) 'IA', IA
       KA=qm2_params%pascal_tri2(IA)
+      !write (6,*) 'KA', KA
       PTOTKA=PTOT(KA)
+     ! write (6,*) 'PTOTKA', PTOTKA
 
       if (qm2_params%natomic_orbs(ii)==1) then  ! Hydrogen 
       else
          ! P Orbitals
-         GSPII=qm2_params%onec2elec_params(2,II)
-         GPPII=qm2_params%onec2elec_params(3,II)
-         GP2II=qm2_params%onec2elec_params(4,II)
-         HSPII=qm2_params%onec2elec_params(5,II)
-         GSPIIHSPII=GSPII-HSPII
-         GSPIIHSPIIPTK = GSPIIHSPII*PTOTKA
-         HSPIIGSPII=6.0d0*HSPII-GSPII
-         GP2IIGPPII=GP2II-0.5d0*GPPII
-         GPPIIGP2II=1.5d0*GPPII-GP2II
+         GSPII=qm2_params%onec2elec_params(2,II) ! gsp
+        ! write (6,*) 'GSPII', GSPII
+         GPPII=qm2_params%onec2elec_params(3,II) ! 1/2 gpp
+        ! write (6,*) 'GPPII', GPPII
+         GP2II=qm2_params%onec2elec_params(4,II) ! gp2 - DIFFERENT 
+        ! write (6,*) 'GP2II', GP2II
+         HSPII=qm2_params%onec2elec_params(5,II) ! 1/2 hsp
+        ! write (6,*) 'HSPII', HSPII
+         ! GSPIIHSPII=GSPII-HSPII
+         ! GSPIIHSPIIPTK = GSPIIHSPII*PTOTKA
+         ! HSPIIGSPII=6.0d0*HSPII-GSPII
+         ! GP2IIGPPII=GP2II-0.5d0*GPPII
+         ! GPPIIGP2II=1.5d0*GPPII-GP2II
+
+
+     ! Locations of orbitals. 2,nquant_nlink. 1,x gives beginning of
+     ! of orbitals on atom x. 2,x gives last orbital on atom x.
 
          IB=qm2_params%orb_loc(2,II)
-         PTPOP=PTOT(qm2_params%pascal_tri2(IB)) &
-          +PTOT(qm2_params%pascal_tri2(IB-1))+PTOT(qm2_params%pascal_tri2(IB-2))
+       !  write (6,*) 'IB', IB
+         ! PTPOP=PTOT(qm2_params%pascal_tri2(IB)) &
+         !  +PTOT(qm2_params%pascal_tri2(IB-1))+PTOT(qm2_params%pascal_tri2(IB-2))
 
+         ! write (6,*) 'PTPOP', PTPOP
+         ! call print_1d(PTPOP, 'PTPOP')
 
          IPLUS=IA+1
          L=KA
+         ! write (6,*) 'KA', KA
+       !  write (6,*) 'KA', KA
          do J=IPLUS,IB
+            ! write(6,*) 'J', J
+            ! write(6,*) 'IA', IA
+            ! write(6,*) 'IB', IB
+            ! write(6,*) 'L', L
+
             M=L+IA
+            !write(6,*) 'M', M
             L=L+J
+            ! write(6,*) 'L', L
             PTOTL=PTOT(L)
             PTPOPTL=PTPOP-PTOTL
 
-
             F(M)=F(M)+0.5d0*PTOT(M)*(2.0d0*HSPII-GSPII) ! for antisymmetric
+            
+           ! write (6,*) 'F(M)', F(M)
+          !  write (6,*) '2.0d0*HSPII-GSPII', 2.0d0*HSPII-GSPII
          end do
                                                                            
          IMINUS=IB-1
          do J=IPLUS,IMINUS
             ICC=J+1
+          !  write(6,*) 'ICC', ICC
             do L=ICC,IB
+             !  write(6,*) 'L', L
                M=qm2_params%pascal_tri1(L)+J
+             !  write (6,*) 'M', M
+             !  write (6,*) '(0.5*GPPII-0.6*GP2II)', (0.5*GPPII-0.6*GP2II)
                F(M)=F(M)+PTOT(M)*(0.5*GPPII-0.6*GP2II) ! for antisymmetric 
+               !write (6,*) 'F(M) lower loop', F(M)
             end do
          end do                              
       end if
    end do
+
+  ! write(6, *) 'F after fock1_skew'
+  ! do i = 1,  21
+      
+     ! write(6, '(F8.5)') F(i)
+  ! end do
 
    return
 end subroutine qm2_fock1_skew

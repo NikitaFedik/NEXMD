@@ -15,7 +15,17 @@
 !USED, IT INCLUDES ALL SOLVENT MODELS DESIGNATED BY solvent_model and
 !potential_type
 !^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, qm2_struct,qm2ds,qmmm_struct,u1,v1,solvent_model)
+subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, &
+            qm2_struct,qm2ds,qmmm_struct, &
+            u1,v1,solvent_model)
+
+    ! call Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct,qm2_struct,qm2ds,qmmm_struct,eta,vexp(1,i),cosmo_c_struct%solvent_model)
+    ! call from Davidson to match positional params
+    ! reformated to keep correct identation levels; who the hell broke them? 
+
+    ! u1 = eta
+    ! v1 = vexp(1, i)
+            
     use qm2_davidson_module
     use qmmm_module,only:qm2_structure,qmmm_mpi_structure;
     use cosmo_C, only: cosmo_C_structure
@@ -40,118 +50,170 @@ subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, qm2_struct,q
     _REAL_  tmp(qm2ds%nb,qm2ds%nb),tmp2(qm2ds%nb,qm2ds%nb);
 
     parameter (one=1)
+    write(6,*), 'cosmo_c_struct%potential_type', cosmo_c_struct%potential_type
+    write(6,*), 'solvent model', solvent_model
 
     fs1=0;
     qm2ds%xi=0.d0
     call mo2site(qm2ds,u1,qm2ds%xi,qm2ds%eta) !Change basis of guess vector of Davidson from M.O to A.O
+
+    write (6,*) 'buildM'
+    
+    write(6,*), 'v1', v1 
+
+   ! write(6,*) 'Lxi ' !!JAB
+
+
+    
     qm2ds%eta=0.0;
-    call Vxi(qm2_params,qmmm_mpi,qm2_struct,qm2ds,qmmm_struct,qm2ds%xi,qm2ds%eta);    !Calculate Vacuum Electron Correlation
+    call Vxi(qm2_params,qmmm_mpi,qm2_struct,qm2ds,qmmm_struct,qm2ds%xi, &
+                                                            qm2ds%eta);    !Calculate Vacuum Electron Correlation
+  ! call print_1d(qm2ds%eta, 'buildM eta after Vxi')
+
     !!SELECT SOLVENT MODEL AND POTENTIAL TYPE
-    if ((solvent_model.eq.1)) then !1:Linear Response
-        tmp=0.d0;
-        if (cosmo_c_struct%potential_type.eq.3) then !COSMO Potential
-            call VxiM(cosmo_c_struct,qm2ds,qm2ds%xi,tmp);
-        elseif (cosmo_c_struct%potential_type.eq.2) then !Onsager Potential
-            call rcnfld(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qmmm_struct,tmp,qm2ds%xi,qm2ds%nb)
-        elseif (cosmo_c_struct%potential_type.eq.1) then !testing
-            do i=1,qm2ds%nb; tmp(i,i)=qm2ds%eta(qm2ds%nb*(i-1)+i); enddo !double diag vac correlation
-            endif
-            tmp=tmp
-            call VxiM_end(qm2_struct,qm2ds%eta,tmp);        !Add selected potential to vacuum correlation
-        elseif (solvent_model.eq.99) then !For Z-vector equation if different
-            tmp=0.d0;
-            if (cosmo_c_struct%potential_type.eq.3) then !COSMO Potential
-                call VxiM(cosmo_c_struct,qm2ds,qm2ds%xi,tmp);
-            elseif (cosmo_c_struct%potential_type.eq.2) then !Onsager Potential
-                call rcnfld(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qmmm_struct,tmp,qm2ds%xi,qm2ds%nb)
-            elseif (cosmo_c_struct%potential_type.eq.1) then !testing
-                do i=1,qm2ds%nb; tmp(i,i)=qm2ds%eta(qm2ds%nb*(i-1)+i); enddo !double diag vac correlation
-                endif
-                tmp=2*tmp
-                call VxiM_end(qm2_struct,qm2ds%eta,tmp);            !Add selected potential to vacuum correlation
-            elseif (solvent_model.eq.98) then !For Z-vector equation with SS model
-                tmp=0.d0;
-                if (cosmo_c_struct%potential_type.eq.3) then !COSMO Potential
-                    call VxiM(cosmo_c_struct,qm2ds,qm2ds%xi,tmp);
-                elseif (cosmo_c_struct%potential_type.eq.2) then !Onsager Potential
-                    call rcnfld(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qmmm_struct,tmp,qm2ds%xi,qm2ds%nb)
-                elseif (cosmo_c_struct%potential_type.eq.1) then !testing
-                    do i=1,qm2ds%nb; tmp(i,i)=qm2ds%eta(qm2ds%nb*(i-1)+i); enddo !double diag vac correlation
-                    endif
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp);                    !Add selected potential to vacuumcorrelation
-                    !Commutator is performed here for State Specific Solvent Routines
-                    tmp=0.d0;
-                    call commutator(qm2ds%xi,cosmo_c_struct%v_solvent_difdens,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                elseif(solvent_model.eq.2) then ! 2: State Specific [V_s(T+Z),xi]
-                    tmp=0.d0;
-                    !Commutator is performed here for State Specific Solvent Routines
-                    call commutator(qm2ds%xi,cosmo_c_struct%v_solvent_difdens,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                elseif(solvent_model.eq.3) then !3: State Specific [V_s(xi),xi]
-                    call commutator(cosmo_c_struct%v_solvent_xi,qm2ds%xi,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                elseif(solvent_model.eq.5) then !5: Variational State Specific term
-                    call commutator(qm2ds%xi,cosmo_c_struct%v_solvent_difdens,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                    write(6,*)'Adding variational term in Liouville operator'
-                elseif(solvent_model.eq.6) then!6: Solve nonlinear Liouville equation testing
-                    call commutator(qm2ds%eta,qm2ds%xi,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                elseif(solvent_model.eq.10) then!10: NO GS Solvent test
-                    tmp=0.d0; tmp2=0.d0;
-                    call rcnfld_fock(qm2_params,qmmm_nml,cosmo_c_struct, qm2_struct,qmmm_struct, &
-                                     tmp,qm2_struct%den_matrix,qm2ds%Nb)
-                    call unpacking(qm2ds%Nb,tmp,tmp2,'s'); tmp=0.d0;
-                    call commutator(tmp2,qm2ds%xi,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                elseif(solvent_model.eq.7) then!7: combined LR and VE
-                endif
- 
-                !add constant electric field potential [V_E,xi]
-                if(cosmo_c_struct%EF.eq.2) then!Constant Electric Field in ES only
-                    tmp=0.d0; tmp2=0.d0
-                    call efield_fock(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qm2ds,qmmm_struct,tmp,qm2ds%Nb)
-                    call unpacking(qm2ds%Nb,tmp,tmp2,'s'); tmp=0.d0
-                    call commutator(qm2ds%xi,tmp2,qm2ds%Nb,tmp,.false.)
-                    call VxiM_end(qm2_struct,qm2ds%eta,tmp)
-                endif
 
-                call site2mo(qm2ds,qm2ds%xi,qm2ds%eta,v1);                !Change basis of xi again to M.O.
+!!-------if no solvent model is used, then skip this section ----------------
 
-                i=0
-                do p=1,qm2ds%Np
-                    do h=qm2ds%Np+1,qm2ds%Nb
-                        i=i+1
-                        f=qm2ds%ehf(h)-qm2ds%ehf(p);
-                        !JAB Test
-                        v1(i)=v1(i)+f*u1(i)
-                        v1(i+qm2ds%Ncis)=-(v1(i+qm2ds%Ncis)+f*u1(i+qm2ds%Ncis))
-                    end do
-                enddo
-                do i=1,qm2ds%Nrpa
-                    qm2ds%temp1(i)=qm2ds%v0(i,1)
-                    qm2ds%temp2(i)=u1(i)
-                end do
- 
-                if(qm2ds%Mj.gt.0) then
-                    write(6,*) 'In the weird block' !!JAB
-                    fs1=qm2ds%fs+qm2ds%e0(qm2ds%Mj)
-                    do j=1,qm2ds%Mj
-                        f1=fs1*(ddot(qm2ds%Ncis,qm2ds%v0(1,j),one,u1(1),one) &
-                            -ddot(qm2ds%Ncis,qm2ds%v0(qm2ds%Ncis+1,j),one,u1(qm2ds%Ncis+1),one))
-                        f2=fs1*(ddot(qm2ds%Ncis,qm2ds%v0(qm2ds%Ncis+1,j),one,u1(1),one) &
-                            -ddot(qm2ds%Ncis,qm2ds%v0(1,j),one,u1(qm2ds%Ncis+1),one))
+!     if ((solvent_model.eq.1)) then !1:Linear Response
+!         write(6,*) 'Lxi entered solvation'
+!         write(6,*) 'solvent_model.eq.1'
+!         tmp=0.d0;
+!         if (cosmo_c_struct%potential_type.eq.3) then !COSMO Potential
+!             write(6,*) 'cosmo_c_struct%potential_type.eq.3'
+!             call VxiM(cosmo_c_struct,qm2ds,qm2ds%xi,tmp);
+!         elseif (cosmo_c_struct%potential_type.eq.2) then !Onsager Potential
+!             write(6,*) 'cosmo_c_struct%potential_type.eq.2'
+!             call rcnfld(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qmmm_struct,tmp,qm2ds%xi,qm2ds%nb)
+!         elseif (cosmo_c_struct%potential_type.eq.1) then !testing
+!             write(6,*) 'cosmo_c_struct%potential_type.eq.1'
+!             do i=1,qm2ds%nb; tmp(i,i)=qm2ds%eta(qm2ds%nb*(i-1)+i); enddo !double diag vac correlation
+!         endif
 
-                        call daxpy(qm2ds%Ncis,f1,qm2ds%v0(1,j),one,v1(1),one)
-                        call daxpy(qm2ds%Ncis,f2,qm2ds%v0(1+qm2ds%Ncis,j),one,v1(1),one)
-                        call daxpy(qm2ds%Ncis,f1,qm2ds%v0(1+qm2ds%Ncis,j), &
-                            one,v1(1+qm2ds%Ncis),one)
-                        call daxpy(qm2ds%Ncis,f2,qm2ds%v0(1,j),one,v1(1+qm2ds%Ncis),one)
+!             tmp=tmp
+!             call VxiM_end(qm2_struct,qm2ds%eta,tmp);        !Add selected potential to vacuum correlation
+!     elseif (solvent_model.eq.99) then !For Z-vector equation if different
+!         write(6,*) 'cosmo_c_struct%potential_type.eq.99'
+!         tmp=0.d0;
+!         if (cosmo_c_struct%potential_type.eq.3) then !COSMO Potential
+!             write(6,*) 'cosmo_c_struct%potential_type.eq.3'
+!             call VxiM(cosmo_c_struct,qm2ds,qm2ds%xi,tmp);
+!         elseif (cosmo_c_struct%potential_type.eq.2) then !Onsager Potential
+!             write(6,*) 'cosmo_c_struct%potential_type.eq.2'
+!             call rcnfld(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qmmm_struct,tmp,qm2ds%xi,qm2ds%nb)
+!         elseif (cosmo_c_struct%potential_type.eq.1) then !testing
+!             write(6,*) 'cosmo_c_struct%potential_type.eq.1'
+!             do i=1,qm2ds%nb; tmp(i,i)=qm2ds%eta(qm2ds%nb*(i-1)+i); enddo !double diag vac correlation
+!         endif
+!         tmp=2*tmp
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp);            !Add selected potential to vacuum correlation
+!     elseif (solvent_model.eq.98) then !For Z-vector equation with SS model
+!         write(6,*) 'cosmo_c_struct%potential_type.eq.98'
+!         tmp=0.d0;
+!         if (cosmo_c_struct%potential_type.eq.3) then !COSMO Potential
+!             call VxiM(cosmo_c_struct,qm2ds,qm2ds%xi,tmp);
+!         elseif (cosmo_c_struct%potential_type.eq.2) then !Onsager Potential
+!             call rcnfld(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qmmm_struct,tmp,qm2ds%xi,qm2ds%nb)
+!         elseif (cosmo_c_struct%potential_type.eq.1) then !testing
+!             do i=1,qm2ds%nb; tmp(i,i)=qm2ds%eta(qm2ds%nb*(i-1)+i); enddo !double diag vac correlation
+!         endif
+!             call VxiM_end(qm2_struct,qm2ds%eta,tmp);                    !Add selected potential to vacuumcorrelation
+!             !Commutator is performed here for State Specific Solvent Routines
+!             tmp=0.d0;
+!             call commutator(qm2ds%xi,cosmo_c_struct%v_solvent_difdens,qm2ds%Nb,tmp,.false.)
+!             call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!     elseif(solvent_model.eq.2) then ! 2: State Specific [V_s(T+Z),xi]
+!         tmp=0.d0;
+!         !Commutator is performed here for State Specific Solvent Routines
+!         call commutator(qm2ds%xi,cosmo_c_struct%v_solvent_difdens,qm2ds%Nb,tmp,.false.)
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!     elseif(solvent_model.eq.3) then !3: State Specific [V_s(xi),xi]
+!         call commutator(cosmo_c_struct%v_solvent_xi,qm2ds%xi,qm2ds%Nb,tmp,.false.)
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!     elseif(solvent_model.eq.5) then !5: Variational State Specific term
+!         call commutator(qm2ds%xi,cosmo_c_struct%v_solvent_difdens,qm2ds%Nb,tmp,.false.)
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!         write(6,*)'Adding variational term in Liouville operator'
+!     elseif(solvent_model.eq.6) then!6: Solve nonlinear Liouville equation testing
+!         write(6,*)'Solve nonlinear Liouville equation testing'
+!         call commutator(qm2ds%eta,qm2ds%xi,qm2ds%Nb,tmp,.false.)
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!     elseif(solvent_model.eq.10) then!10: NO GS Solvent test
+!         tmp=0.d0; tmp2=0.d0;
+!         call rcnfld_fock(qm2_params,qmmm_nml,cosmo_c_struct, qm2_struct,qmmm_struct, &
+!                             tmp,qm2_struct%den_matrix,qm2ds%Nb)
+!         call unpacking(qm2ds%Nb,tmp,tmp2,'s'); tmp=0.d0;
+!         call commutator(tmp2,qm2ds%xi,qm2ds%Nb,tmp,.false.)
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!     elseif(solvent_model.eq.7) then!7: combined LR and VE
+!     endif
 
-                    end do
-                endif
-            end subroutine
+!     write(6,*)'D endif of solvent models'
+!     !add constant electric field potential [V_E,xi]
+!     if(cosmo_c_struct%EF.eq.2) then!Constant Electric Field in ES only
+!         write(6,*)'EF.eq.2'
+!         tmp=0.d0; tmp2=0.d0
+!         call efield_fock(qm2_params,qmmm_nml,cosmo_c_struct,qm2_struct,qm2ds,qmmm_struct,tmp,qm2ds%Nb)
+!         call unpacking(qm2ds%Nb,tmp,tmp2,'s'); tmp=0.d0
+!         call commutator(qm2ds%xi,tmp2,qm2ds%Nb,tmp,.false.)
+!         call VxiM_end(qm2_struct,qm2ds%eta,tmp)
+!     endif
+
+! !!---------- end of solvent models ----------------------------
+
+    ! write(6,*) 'qm2ds%xi before site2mo', qm2ds%xi !!
+    ! write(6,*) 'qm2ds%ets before site2mo', qm2ds%eta !!
+    ! call site2mo(qm2ds,qm2ds%xi,qm2ds%eta,v1);  !Change basis of xi again to M.O.
+    ! write(6,*) 'qm2ds%xi after site2mo', qm2ds%xi !!
+    ! write(6,*) 'qm2ds%eta after site2mo', qm2ds%eta !!
+    ! write(6,*) 'Lxi here 2'
+
+
+    ! u1 = eta
+    ! v1 = vexp(1, i)
+    i=0
+    do p=1,qm2ds%Np
+        ! write(6,*) 'p', p !!
+        do h=qm2ds%Np+1,qm2ds%Nb
+            ! write(6,*) 'h', h !!
+            i=i+1
+            ! write(6,*) 'i', i !!
+            ! write(6,*) 'qm2ds%ehf(h)', qm2ds%ehf(h) !!
+            ! write(6,*) 'qm2ds%ehf(p)', qm2ds%ehf(p)
+            f=qm2ds%ehf(h)-qm2ds%ehf(p);
+            ! write(6,*) 'i', i !!
+            !JAB Test
+            v1(i)=v1(i)+f*u1(i)
+            v1(i+qm2ds%Ncis)=-(v1(i+qm2ds%Ncis)+f*u1(i+qm2ds%Ncis))
+        end do
+    enddo
+
+    write(6,*) '===== Lxi HERE 3 ====='
+    do i=1,qm2ds%Nrpa
+        qm2ds%temp1(i)=qm2ds%v0(i,1)
+        qm2ds%temp2(i)=u1(i)
+    end do
+
+    write(6,*) '===== Lxi HERE 4 ======'
+
+   ! write(6,*) 'Mj', Mj
+    if(qm2ds%Mj.gt.0) then
+
+        write(6,*) 'In the weird block' !!JAB
+        fs1=qm2ds%fs+qm2ds%e0(qm2ds%Mj)
+        do j=1,qm2ds%Mj
+            f1=fs1*(ddot(qm2ds%Ncis,qm2ds%v0(1,j),one,u1(1),one) &
+                -ddot(qm2ds%Ncis,qm2ds%v0(qm2ds%Ncis+1,j),one,u1(qm2ds%Ncis+1),one))
+            f2=fs1*(ddot(qm2ds%Ncis,qm2ds%v0(qm2ds%Ncis+1,j),one,u1(1),one) &
+                -ddot(qm2ds%Ncis,qm2ds%v0(1,j),one,u1(qm2ds%Ncis+1),one))
+
+            call daxpy(qm2ds%Ncis,f1,qm2ds%v0(1,j),one,v1(1),one)
+            call daxpy(qm2ds%Ncis,f2,qm2ds%v0(1+qm2ds%Ncis,j),one,v1(1),one)
+            call daxpy(qm2ds%Ncis,f1,qm2ds%v0(1+qm2ds%Ncis,j),one,v1(1+qm2ds%Ncis),one)
+            call daxpy(qm2ds%Ncis,f2,qm2ds%v0(1,j),one,v1(1+qm2ds%Ncis),one)
+
+        end do
+    endif
+end subroutine
 
 
             !^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

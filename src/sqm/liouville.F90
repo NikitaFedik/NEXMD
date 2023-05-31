@@ -18,7 +18,8 @@
 !  102, 3171-3212 (2002)
 !
 !--------------------------------------------------------------------
-!
+! ! seems that it takes advanthe of 0 block strucutre of guess fector in MO basis
+  !
    subroutine site2mo(qm2ds,zz,xi,v1)
    use qm2_davidson_module
    implicit none
@@ -38,21 +39,106 @@
    return
    end subroutine
 !
+
+
    subroutine mo2site (qm2ds,v1,xi,zz)
+
    use qm2_davidson_module
    implicit none
    type(qm2_davidson_structure_type), intent(inout) :: qm2ds
    _REAL_ f0,f1
-   parameter (f0 = 0.0)
-   parameter (f1 = 1.0)
+   integer i,j
+   parameter (f0 = 0.0) ! do not add beta*C, f0=eta=0
+   parameter (f1 = 1.0) ! alpha, no scaling 
+
    _REAL_ xi(qm2ds%Nb,qm2ds%Nb),v1(qm2ds%Nrpa)
    _REAL_ zz(qm2ds%Nb,qm2ds%Nb)
-   call dgemm ('T','T',qm2ds%Np,qm2ds%Nb,qm2ds%Nh,f1,v1(1),qm2ds%Nh, &
-      qm2ds%vhf(:,qm2ds%Np+1:qm2ds%Nb),qm2ds%Nb,f0,zz,qm2ds%Nb)
-   call dgemm ('N','T',qm2ds%Nh,qm2ds%Nb,qm2ds%Np,f1,v1(qm2ds%Ncis+1), &
-      qm2ds%Nh,qm2ds%vhf,qm2ds%Nb,f0,zz(qm2ds%Np+1,1),qm2ds%Nb)
-   call dgemm ('N','N',qm2ds%Nb,qm2ds%Nb,qm2ds%Nb,f1,qm2ds%vhf, &
-      qm2ds%Nb,zz,qm2ds%Nb,f0,xi,qm2ds%Nb)
+
+   real(8) :: v1_2d(qm2ds%Nh,qm2ds%Np)
+
+   ! v1 = u1 = eta from davidson
+   ! xi = qm2ds%xi
+   ! zz = qm2ds%eta
+   ! call mo2site(qm2ds,u1,qm2ds%xi,qm2ds%eta)
+
+
+! write (6,*) 'BEFORE MO2SITE'
+
+!  call print_2d(qm2ds%vhf, 'qm2ds%vhf')
+!  call print_2d( qm2ds%vhf(:,qm2ds%Np+1:qm2ds%Nb), ' qm2ds%vhf(:,qm2ds%Np+1:qm2ds%Nb)')
+!     write (6,*) 'v1', v1
+!     write (6,*) 'v1 size', size(v1)
+!     write (6,*) 'qm2ds%xi', qm2ds%xi
+!       write (6,*) 'qm2ds%eta or zz', qm2ds%eta
+   
+   
+!    ! call print_2d(xi, 'xi ')
+!    call print_2d(zz, 'zz ')
+! call print_2d(reshape(v1, [qm2ds%Nh, qm2ds%Np]), ' v1 reshape')
+
+
+
+   !dgemm C = alpha*A*B + beta*C
+   call dgemm ('T', 'T', &! TRANS A B
+               qm2ds%Np, qm2ds%Nb, qm2ds%Nh,& ! M N K
+               f1, & ! alpha
+ !              reshape(v1, [qm2ds%Nh, qm2ds%Np]), &   ! A
+               v1(1), &   ! A    ! seems like v1(1) or v1 are the same, probably the index at which start array -> 2d transformation
+ !              v1_2d, &   ! A
+               qm2ds%Nh, &! LDA - dimension
+               qm2ds%vhf(:,qm2ds%Np+1:qm2ds%Nb), & ! B
+               qm2ds%Nb, &! LDB - dimension
+               f0,       &! beta
+               zz,       &! C, output
+               qm2ds%Nb)  !LDC - dimension
+
+   ! write (6,*) 'after 1 DGEMM'
+
+   ! ! call print_2d(qm2ds%vhf, 'qm2ds%vhf')
+   ! ! call print_2d(xi, 'xi ')
+   ! call print_2d(zz, 'zz ')
+
+   
+ !  call print_2d(v1, 'v1 ')
+ !---------------------------------------------------------------------
+   ! write (6,*) 'v1(qm2ds%Ncis+1)',v1(qm2ds%Ncis+1)
+   ! write (6,*) 'shape v1(qm2ds%Ncis+1)', shape(v1(qm2ds%Ncis+1))
+   call dgemm ('N','T', &
+               qm2ds%Nh,qm2ds%Nb,qm2ds%Np, &
+               f1, &
+               v1(qm2ds%Ncis+1), & ! A
+               
+               qm2ds%Nh, &
+               qm2ds%vhf, &        ! B
+               qm2ds%Nb, &
+               f0, &
+               zz(qm2ds%Np+1,1), &
+               qm2ds%Nb)
+
+!    write (6,*) 'after 2 DGEMM'            
+! !  !  call print_2d(v1, 'v1 ')
+!     call print_2d(zz, 'zz ')
+   
+!     write (6,*) 'after 3 DGEMM'
+
+!    call print_2d(xi, 'xi ')
+!    call print_2d(zz, 'zz ')
+
+               
+   call dgemm ('N','N', &
+               qm2ds%Nb,qm2ds%Nb,qm2ds%Nb, &
+               f1,qm2ds%vhf, &
+                qm2ds%Nb, &
+                zz,qm2ds%Nb, &
+                f0, &
+                xi, &
+                qm2ds%Nb)
+
+   ! call print_2d(qm2ds%vhf, 'qm2ds%vhf after mo2site')
+!  call print_2d(xi, 'xi after mo2site')
+   ! call print_2d(zz, 'zz after mo2site')
+
+
    return
    end subroutine
 !
@@ -104,7 +190,8 @@
 !
 !********************************************************************
 !
-   subroutine Vxi(qm2_params,qmmm_mpi,qm2_struct,qm2ds,qmmm_struct,xi,eta)
+   subroutine Vxi(qm2_params,qmmm_mpi,qm2_struct,qm2ds,qmmm_struct, &
+                                                            xi,eta)
    use qm2_davidson_module
    use qmmm_struct_module, only : qmmm_struct_type
    use qmmm_module,only:qm2_structure, qmmm_mpi_structure
@@ -122,37 +209,64 @@
    qm2ds%xis(:)=0.d0
    qm2ds%etas(:)=0.d0
    coef = 1.000000;
+
+   write (6,*) '============== Vxi ====================='
+
+   call print_2d(xi, 'xi ')
+   call print_2d(eta, 'eta ')
+
 ! symmetric part:
    l=0
    do i=1,qm2ds%Nb
+      ! write (6,*) 'i', i
     do j=1,i
+      ! write (6,*) 'j', j
+      !  write (6,*) 'l', l
        l=l+1
        qm2ds%xis(l)=coef*0.5*(xi(i,j)+xi(j,i))
     end do
    end do
 
+   ! call print_1d(qm2ds%xis, 'qm2ds%xis before Vxi pack')
+   ! call print_1d(qm2ds%etas, 'qm2ds%etas before Vxi pack')
+
+   
+
    call Vxi_pack(qm2_params,qmmm_mpi,qm2_struct,qm2ds,qmmm_struct,qm2ds%xis,qm2ds%etas)
-    l=0
+  ! call print_1d(qm2ds%xis, 'qm2ds%xis after Vxi pack')
+  ! call print_1d(qm2ds%etas, 'qm2ds%etas after Vxi pack')
+
+    l=0 ! probably triangular -> 2d array
     do i=1,qm2ds%Nb
       do j=1,i-1
+       !  write (6,*) 'j', j
          l = l + 1
+      !   write (6,*) 'l', l
          eta(i,j)=eta(i,j)+qm2ds%etas(l)
          eta(j,i)=eta(j,i)+qm2ds%etas(l)
       end do
+      ! write (6,*) 'l2', l
       l=l+1
       eta(i,i)=qm2ds%etas(l)
    end do
+ !  call print_2d(eta, 'eta symmetric after 1 Vxi')
 
 !  antisymmetric part:
    l=0
    do i=1,qm2ds%Nb
     do j = 1,i
+      !  write (6,*) 'j', j
       l = l + 1
       qm2ds%xis(l)=coef*0.5*(xi(i,j)-xi(j,i))
     end do
    end do
 
+
+  ! call print_1d(qm2ds%etas, ' antisym qm2ds%etas before Vxi packA')
+
    call Vxi_packA(qm2_params,qmmm_mpi,qm2_struct,qm2ds,qmmm_struct,qm2ds%xis,qm2ds%etas)
+ !  call print_1d(qm2ds%etas, ' antisym qm2ds%etas AFTER Vxi packA')
+ !  call print_2d(eta, 'eta symmetric after Vxi')
    l=0
    do i=1,qm2ds%Nb
       do j = 1,i-1
@@ -160,13 +274,20 @@
          eta(i,j) = eta(i,j) + qm2ds%etas(l)
          eta(j,i) = eta(j,i) - qm2ds%etas(l)
       end do
-
       l = l + 1
    end do
+
+   call print_2d(eta, 'eta ANTIsymmetric after 1 Vxi')
+
    return
+
+
+
+
 
    entry Vxi_symm (xi,eta)   ! eta = Vxi
 !  pack:
+
    l = 0
    do i = 1,qm2ds%Nb
     do j = 1,i
@@ -207,20 +328,45 @@
    _REAL_ xi(qm2ds%Lt),eta(qm2ds%Lt)
 
 ! --- if this is the first time in this routine, load coulomb matrix
-      if (qm2_params%vxi_first) then
-   if (index(qm2_params%keywr,'INDO').NE.0.AND.index(qm2_params%keywr,'MINDO').EQ.0) then
-     write(6,*) qm2_params%keywr,' hamiltonian requested'
-     write(6,*)  'Use *Z program for ', qm2_params%keywr
-     stop
-   endif 
+   write(6,*) 'qm2ds%iderivfl', qm2ds%iderivfl  
+   if (qm2_params%vxi_first) then
+      write(6,*) 'Vxi: first time in this routine'
+
+      if (index(qm2_params%keywr,'INDO').NE.0.AND.index(qm2_params%keywr,'MINDO').EQ.0) then
+         write(6,*) qm2_params%keywr,' hamiltonian requested'
+         write(6,*)  'Use *Z program for ', qm2_params%keywr
+         stop
+      endif 
          qm2_params%vxi_first=.false.
-      endif
-      eta(:)=0.0
-      call qm2_fock2(qmmm_mpi,qm2_params,qm2_struct, qmmm_struct,eta,xi,qm2ds%W,qm2_params%orb_loc)
-   if (qm2ds%iderivfl.eq.0) then ! We are not in analytic derivatives     
+         write(6,*) 'm2_params%vxi_first', qm2_params%vxi_first
+   endif
+   eta(:)=0.0
+      
+   !write(6,*) 'calling fock2'
+  ! call print_1d(qm2ds%W, 'qm2ds%W before fock2')
+
+  ! call print_1d(eta, 'eta before fock2')
+   call qm2_fock2(qmmm_mpi,qm2_params,qm2_struct, qmmm_struct, & 
+                                                      eta, &     ! F
+                                                      xi, &      ! Ptot
+                                                      qm2ds%W, & ! W 2c2e
+                                                      qm2_params%orb_loc)
+
+  ! call print_1d(eta, 'eta AFTER fock2')
+                                        
+
+
+   if (qm2ds%iderivfl.eq.0) then ! We are not in analytic derivatives   
+    !  write(6,*) 'calling fock1'
+     ! call print_1d(eta, 'eta BEFORE fock1')
       call qm2_fock1(qmmm_mpi,qm2_params,qmmm_struct, eta,xi) 
-      endif
-      eta(:)=eta(:)*2.0 !Why *2.0? Is it for the commutator in L(xi)?
+    !  call print_1d(eta, 'eta AFTER fock1')
+
+   endif
+
+  ! write(6,*) 'before eta(:)=eta(:)*2.0'
+   eta(:)=eta(:)*2.0 !Why *2.0? Is it for the commutator in L(xi)?
+
    return
    end
 !
@@ -243,21 +389,27 @@
    _REAL_ xi(qm2ds%Lt),eta(qm2ds%Lt)
 
 ! --- if this is the first time in this routine, load coulomb matrix
-      if (qm2_params%vxia_first) then
-   if (index(qm2_params%keywr,'INDO').NE.0.AND.index(qm2_params%keywr,'MINDO').EQ.0) then
-     write(6,*)  qm2_params%keywr,' hamiltonian requested'
-     write(6,*)  'Use *Z program for ', qm2_params%keywr
-     stop
-   endif 
+   if (qm2_params%vxia_first) then
+      if (index(qm2_params%keywr,'INDO').NE.0.AND.index(qm2_params%keywr,'MINDO').EQ.0) then
+       write(6,*)  qm2_params%keywr,' hamiltonian requested'
+       write(6,*)  'Use *Z program for ', qm2_params%keywr
+       stop
+      endif 
          qm2_params%vxia_first=.false.
-      endif
+   endif
       eta(:)=0.0
-      call qm2_fock2(qmmm_mpi,qm2_params,qm2_struct,qmmm_struct, eta,xi,qm2ds%W,qm2_params%orb_loc)
+   !   call print_1d(xi, 'xi before fock2 in Vxi_packA')
+   call qm2_fock2(qmmm_mpi,qm2_params,qm2_struct,qmmm_struct, eta,xi,qm2ds%W,qm2_params%orb_loc)
+  ! call print_1d(eta, 'eta after fock2 in Vxi_packA')
    if (qm2ds%iderivfl.eq.0) then ! We are not in analytic derivatives
       call qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, eta,xi)
-      endif
+   endif
       eta(:)=eta(:)*2.0
    return
    end
-!
+! MODULE ArrayModule
+!    contains
 
+
+! END MODULE ArrayModule
+      

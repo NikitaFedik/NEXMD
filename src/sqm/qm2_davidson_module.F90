@@ -441,5 +441,44 @@
    return
    end subroutine deallocate_davidson
 
+   subroutine print_2d(arr, mes)
+
+      implicit none
+      real(8), intent(in) :: arr(:, :)
+      character(len=*) :: mes
+      integer :: i, j
+  
+      ! Array is 2D, print as a matrix
+      write(6,*) mes
+      write(6,*) shape(arr)
+  
+      do i = 1, size(arr, 1)
+         do j = 1, size(arr, 2)
+            write(6, ' (F8.5, 3x)', advance='no')  arr(i,j)
+         end do
+         write(6,*)
+      end do
+  
+   end subroutine print_2d
+  
+   subroutine print_1d(arr, mes)
+
+      implicit none
+      real(8), intent(in) :: arr(:)
+      character(len=*) :: mes
+      integer :: i
+  
+      ! Array is 2D, print as a matrix
+      write(6,*) mes
+      write(6,*) size(arr)
+  
+      do i = 1, size(arr)
+            write(6, ' (F8.5, 3x)', advance='no')  arr(i)
+         write(6,*)
+      end do
+  
+   end subroutine print_1d      
+
+
    end module qm2_davidson_module
 !

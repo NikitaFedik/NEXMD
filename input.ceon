@@ -5,7 +5,7 @@
    grms_tol=1.0d-2, ! Tolerance in eV/A (derivatives) [1.0d-2]
 
    !***** Ground-State and Output Parameters
-   qm_theory='AM1', ! Integral type, check Amber's SQM for more options [AM1]
+   qm_theory='PM3', ! Integral type, check Amber's SQM for more options [AM1]
    scfconv=1.0d-8, ! Ground-state SCF convergence criteria, eV [1.0d-6]
    verbosity=5, ! QM/MM output verbosity (0-minimum, 5-maximum)
    ! [1 for dynamics and optimization, 5 for others]
@@ -27,7 +27,7 @@
    ftol0=1.0d-7, ! Acceptance tolerance (|emin-eold|) [1.0d-5]
    ftol1=1.0d-8, ! Acceptance tolerance for residual norm [1.0d-5] 
    ! *** UNDER DEVELOPMENT, DO NOT USE ***
-   dav_maxcyc=10, ! Max cycles for Davidson diagonalization 
+   dav_maxcyc=2, ! Max cycles for Davidson diagonalization 
    ! (negative to ignore convergence) [100]
    calcxdens=.false., ! Print (.true.) or do not print (.false.) 
    ! excited-to-excited transition dipole moments [.false.]
@@ -58,8 +58,8 @@
    ! (must be equal to number of atoms in system)
    rnd_seed=1, ! Seed for the random number generator
    bo_dynamics_flag=1, ! (0) Non-BO or (1) BO [1]
-   exc_state_init=0, ! Initial excited state (0 - ground state) [0]
-   n_exc_states_propagate=4, ! Number of excited states [0]
+   exc_state_init=1, ! Initial excited state (0 - ground state) [0]
+   n_exc_states_propagate=3, ! Number of excited states [0]
 
    !***** Dynamics Parameters
    time_init=0.0, ! Initial time, fs [0.0]
