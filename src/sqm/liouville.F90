@@ -29,13 +29,30 @@
    parameter (f1 = 1.0)
    _REAL_ xi(qm2ds%Nb,qm2ds%Nb),v1(qm2ds%Nrpa)
    _REAL_ zz(qm2ds%Nb,qm2ds%Nb)
+   
+   !write (6,*) 'BEFORE SITE2MO'
+   !dgemm C = alpha*A*B + beta*C
+
+  ! call print_1d(v1, 'v1')
    call dgemm ('T','N',qm2ds%Nb,qm2ds%Nb,qm2ds%Nb,f1,xi,qm2ds%Nb, &
       qm2ds%vhf,qm2ds%Nb,f0,zz,qm2ds%Nb)
+
+  ! write (6,*) 'after 1 DGEMM'
+ !  call print_2d(zz, 'zz')
+
+   
    call dgemm ('T','N',qm2ds%Nh,qm2ds%Np,qm2ds%Nb,f1, &
       qm2ds%vhf(:,qm2ds%Np+1:qm2ds%Nb),qm2ds%Nb,zz,qm2ds%Nb,f0,v1,qm2ds%Nh)
+
+ !  write (6,*) 'after 2 DGEMM'
+  ! call print_1d(v1, 'v1')
+
    call dgemm ('T','N',qm2ds%Nh,qm2ds%Np,qm2ds%Nb,f1, &
       zz(1,qm2ds%Np+1),qm2ds%Nb,qm2ds%vhf,qm2ds%Nb,f0, &
       v1(qm2ds%Ncis+1),qm2ds%Nh)      
+
+  ! write (6,*) 'after 3 DGEMM'
+ !  call print_1d(v1, 'v1')
    return
    end subroutine
 !
@@ -212,8 +229,8 @@
 
    write (6,*) '============== Vxi ====================='
 
-   call print_2d(xi, 'xi ')
-   call print_2d(eta, 'eta ')
+   ! call print_2d(xi, 'xi ')
+   ! call print_2d(eta, 'eta ')
 
 ! symmetric part:
    l=0
@@ -249,7 +266,7 @@
       l=l+1
       eta(i,i)=qm2ds%etas(l)
    end do
- !  call print_2d(eta, 'eta symmetric after 1 Vxi')
+   call print_2d(eta, 'G SYM')
 
 !  antisymmetric part:
    l=0
@@ -276,8 +293,8 @@
       end do
       l = l + 1
    end do
-
-   call print_2d(eta, 'eta ANTIsymmetric after 1 Vxi')
+   call print_2d(eta, 'G SYM + ANTISYM')
+   !call print_2d(eta, 'eta ANTIsymmetric after 1 Vxi')
 
    return
 

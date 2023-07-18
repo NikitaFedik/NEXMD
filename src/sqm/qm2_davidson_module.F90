@@ -454,7 +454,7 @@
   
       do i = 1, size(arr, 1)
          do j = 1, size(arr, 2)
-            write(6, ' (F8.5, 3x)', advance='no')  arr(i,j)
+            write(6, ' (F7.3, 3x)', advance='no')  arr(i,j)
          end do
          write(6,*)
       end do
@@ -473,7 +473,7 @@
       write(6,*) size(arr)
   
       do i = 1, size(arr)
-            write(6, ' (F8.5, 3x)', advance='no')  arr(i)
+            write(6, ' (F7.3, 2x)', advance='no')  arr(i)
          write(6,*)
       end do
   

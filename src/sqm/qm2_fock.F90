@@ -778,6 +778,7 @@ subroutine  qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
     !  write(6, *) 'PTOT i', PTOT(i)
   ! end do
 
+   write(6, *)
    write(6, *) 'qm2_params%pascal_tri2', qm2_params%pascal_tri2
    write(6, *) 'qm2_params%pascal_tri1', qm2_params%pascal_tri1
 
@@ -788,7 +789,7 @@ subroutine  qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
      ! wriTE (6,*) 'GSSII', GSSII              
 
       IA=qm2_params%orb_loc(1,II)             ! 1, 5, 6 for H2O
-      !write (6,*) 'IA', IA
+      write (6,*) 'orbtial location 1 IA', IA
       KA=qm2_params%pascal_tri2(IA)
       !write (6,*) 'KA', KA
       PTOTKA=PTOT(KA)
@@ -816,7 +817,7 @@ subroutine  qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
      ! of orbitals on atom x. 2,x gives last orbital on atom x.
 
          IB=qm2_params%orb_loc(2,II)
-       !  write (6,*) 'IB', IB
+        write (6,*) 'orbtial location 2 IB', IB
          ! PTPOP=PTOT(qm2_params%pascal_tri2(IB)) &
          !  +PTOT(qm2_params%pascal_tri2(IB-1))+PTOT(qm2_params%pascal_tri2(IB-2))
 
@@ -842,7 +843,7 @@ subroutine  qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
 
             F(M)=F(M)+0.5d0*PTOT(M)*(2.0d0*HSPII-GSPII) ! for antisymmetric
             
-           ! write (6,*) 'F(M)', F(M)
+           write (6,*) 'F(M) FIRST', F(M)
           !  write (6,*) '2.0d0*HSPII-GSPII', 2.0d0*HSPII-GSPII
          end do
                                                                            
@@ -856,7 +857,7 @@ subroutine  qm2_fock1_skew(qm2_params,qmmm_mpi,qmmm_struct, F, PTOT)
              !  write (6,*) 'M', M
              !  write (6,*) '(0.5*GPPII-0.6*GP2II)', (0.5*GPPII-0.6*GP2II)
                F(M)=F(M)+PTOT(M)*(0.5*GPPII-0.6*GP2II) ! for antisymmetric 
-               !write (6,*) 'F(M) lower loop', F(M)
+               write (6,*) 'F(M) SECOND', F(M)
             end do
          end do                              
       end if

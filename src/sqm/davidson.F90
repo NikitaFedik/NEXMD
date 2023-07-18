@@ -696,52 +696,68 @@ end do
       call dcopy(Ncis,vexp1(1,i),one,eta,one) ! eta is copy of vexp1(1,i)
 
 
-      ! call print_2d(vexp1, 'vexp1 before Lxi_testing')
-      ! call print_2d(vexp, 'vexp before Lxi_testing')
-      write(6, *) 'vexp1', vexp1
-      write(6, *) 'eta', eta
+      call print_2d(vexp1, 'vexp1 before Lxi_testing')
+     ! call print_2d(vexp, 'vexp before Lxi_testing')
+     ! write(6, *) 'vexp1', vexp1
+     ! write(6, *) 'eta', eta
       call Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct,qm2_struct, &
                        qm2ds,qmmm_struct,&
                        eta,vexp(1,i),cosmo_c_struct%solvent_model)
-  !    call print_2d(vexp, 'vexp after Lxi_testing')
+      write(6, *) '=============== calling Lxi i ============', i                      
+      ! call print_2d(vexp, 'vexp after Lxi_testing')
 
       ! MY GUESS: vexp is returned snd filled only here
 
       ! write(6, *) 'vexp1(1,1)', vexp1(1,1)
       ! write(6, *) 'calling Lxi i', i           
 
- !     call print_2d(eta, 'eta after Lxi_testing')
+      ! call print_2d(vexp, 'vexp BEFORE X-Y')
       
        
-      !
+    !  write(6, *) 'vexp after Lxi', vexp
 ! CIS - set Y=0
+      !call print_2d(vexp, 'vexp BEFORE CIS')
       if(idav.eq.1) then
+         write(6, *) 'CIS'
          do j=1,Ncis
             vexp(Ncis+j,i)=0.0
          enddo
       endif
+      !call print_2d(vexp, 'vexp after CIS')
 
 ! form vexp(1,i) having Ab and Bb to (A+B)b and (A-B)b	  
 ! thus vexp was L([X;Y], now it is [LX+LY;LX-LY] !!JAB
+
+   
       do j=1,Ncis
          f1=vexp(j,i)
-         vexp(j,i)=vexp(j,i)+vexp(Ncis+j,i)
+         vexp(j,i)=vexp(j,i)+vexp(Ncis+j,i) ! A + B
          vexp(Ncis+j,i)=f1-vexp(Ncis+j,i)
       end do
    end do
+   call print_2d(vexp, 'vexp ALL AFTER CIS') 
+   ! SOMEHOW, AFTER CIS LOWER part of columns is not 0 !!! MAYBE BUG?
 
 !       stop
 ! **** Operations in Krylov space
 ! form ray1=b(A-B)b and ray2=b(A+B)b	
 !That is, these are formed from vexp=L(xi) and the new guess expansions Vexp1
+   write(6, *) 'FORMING RAY1 AND RAY2'
+   write(6, *) 'nd1', nd1
+   call print_2d(vexp, 'vexp before ray1')
+   call print_2d(vexp1, 'vexp1 before ray1')
    do i=1,nd1
       do j=nd1_old+1,nd1
          ray1(i,j)=ddot(Ncis,vexp1(1,i),one,vexp(1,j),one)
          ray2(i,j)=ddot(Ncis,vexp1(1,i),one,vexp(Ncis+1,j),one)
       end do
    end do
+
+   call print_2d(ray1, 'ray1')
+   call print_2d(ray2, 'ray2')
   
    if(nd1_old.ne.0) then
+      write(6, *) 'nd1_old NOT EQUAL 0'
       do i=nd1_old+1,nd1
        do j=1,nd1
           ray1(i,j)=ddot(Ncis,vexp1(1,i),one,vexp(1,j),one)
@@ -751,6 +767,7 @@ end do
    end if
 
    nd1_old=nd1
+   write(6,*)'ind1_old',nd1_old
 
 
 ! form ray1a=sqrt(b(A-B)b)
@@ -768,25 +785,39 @@ end do
    write(6,*)'info000',info
    write(6,*)'info Nrpa,nd,nd1',qm2ds%Nrpa,nd,nd1
    write(6,*)'info shapes',shape(rayvR),shape(raye),shape(xi)
+
+   call print_1d(raye, 'raye')
+   call print_2d(rayvR, 'rayvR')
  
    do j=1,nd1
       raye1(j)=Sign(Sqrt(Abs(raye(j))),raye(j)) !make raye1 sqrt(eigenvalues) with same sign as eigenvalues
    end do
 
+   ! @@@@@@@@@@@@@@@@@@@@@@@@@@@
+   write(6,*)'@@@@@@@@@@@@@@@@@@@@@@@@@@@'
+
+   call print_1d(raye1, 'raye1')
+
+   ! PRECONDITIONER??? 
    do j=1,nd1
     do i=1,nd1
        rayv(i,j)=rayvR(j,i)*raye1(i)
     end do
    end do
- 
-   call dgemm('N','N',nd1,nd1,nd1,f1,rayvR,nd,rayv,nd,f0,ray1a,nd) !
+   call print_2d(rayv, 'rayv')
 
+   call dgemm('N','N',nd1,nd1,nd1,f1,rayvR,nd,rayv,nd,f0,ray1a,nd) !
+   call print_2d(ray1a, 'ray1a')
 
    call dgemm('N','N',nd1,nd1,nd1,f1,ray2,nd,ray1a,nd,f0,rayv,nd)
+   call print_2d(rayv, 'rayv')
+
    call dgemm('N','N',nd1,nd1,nd1,f1,ray1a,nd,rayv,nd,f0,ray,nd)
+
+   call print_2d(ray, 'ray')
    call dcopy(nd*nd,ray,one,rayv,one)
    call symmetr(nd,rayv) ! symmetrize the matrix
-
+   call print_2d(rayv, 'rayv AFTER SYMMETRIZATION')
 
 ! find eigenvalues and eigenvectors of ray
    write(6,*)'info0',info
@@ -795,18 +826,28 @@ end do
       raye(j) = Sign(Sqrt(Abs(raye(j))),raye(j))
    enddo
    deallocate(dtmp)
+   call print_1d(raye, 'raye AFTER find eigenvalues and eigenvectors of ray')
 
-! Solve for Right EigenVector  rayvR = |X+Y>=ray1a*rayv
+
+
+! Solve for Right EigenVector  
+! rayvR = |X+Y>=ray1a*rayv
    call dgemm('N','N',nd1,nd1,nd1,f1,ray1a,nd,rayv,nd,f0,rayvR,nd)
+   call print_2d(rayvR, 'rayvR')
+
 ! Solve for Left EigenVector  
 ! rayvL = |X-Y> = 1/E b(A+B)b|X+Y> =1/raye * ray2 * rayvR
    call dgemm('N','N',nd1,nd1,nd1,f1,ray2,nd,rayvR,nd,f0,rayvL,nd)
+   call print_2d(rayvL, 'rayvL')
+
+
 
    do j=1,nd1
     do i=1,nd1
        rayvL(i,j)=rayvL(i,j)/raye(j)
     end do
    end do
+   call print_2d(rayvL, 'rayvL supposedly after preconditioner')
 
    if(lprint.gt.2) then 
       write(6,*)'info',info
@@ -822,24 +863,31 @@ end do
    end do
 
    do k=j0+1,j0+j1
+      write(6,*)'k',k
 
+ write(6,*)' === DAXPY LOOP ===',rayvR
  !new eigenvectors from converged onward (j0 is the number of converged vectors)
  !vexp1 is calculated at the beginning of the routine. The previous Krylov space
  !calculations result in f1 and f2 below which are used to mix vexp1 with
  !unconverged vectors in v0
+ ! daxpy: Y := A * X + Y
       do i=1,nd1
+        ! write(6,*)'i', i
          f1=rayvR(i,(k-j0))
+         !write(6,*)'f1', f1
          f2=rayvL(i,(k-j0))
+         ! write(6,*)'f2', f2
          call daxpy(Ncis,f1,vexp1(1,i),one,v0(1,k),one) !V0=V0+f1*Vexp1
          call daxpy(Ncis,f2,vexp1(1,i),one,v0(1+Ncis,k),one)
       end do
 
       do i=1,Ncis !Whatever is going on here, it looks like some X-Y, X+Y stuff
          f3=v0(i,k)
+        ! write(6,*)'f3', f3
          v0(i,k)=-v0(i,k)-v0(Ncis+i,k)
          v0(Ncis+i,k)=v0(Ncis+i,k)-f3
       end do
-       
+      !call print_2d(v0, 'v0')
 ! CIS : Y=0
       if(idav.eq.1) then
          do i=1,Ncis
@@ -847,6 +895,10 @@ end do
          end do
       end if
    end do
+
+   call print_2d(v0, 'v0')
+
+   write(6,*)' === END DAXPY LOOP ==='
 
 !  Orthogonalize and normalize approximate eigenvectors
    do j=j0+1,j0+j1
@@ -861,7 +913,10 @@ end do
       f2=1/sqrt(abs(f2))
       call dscal(2*Ncis,f2,v0(1,j),one)
 
+
    end do
+   write(6,*)'=== AFTER ORTHOGONALIZATION ==='
+   call print_2d(v0, 'v0')
  
 ! FIND eigenvalue, residual vectors and residual norm:
 ! print results of this iteration and check for converged vectors
@@ -870,47 +925,70 @@ end do
    n=0
    m=0
 
+   write(6,*) '===== SECOND Lxi TESTING ======='
+   ! call print_1d(eta, 'eta')
    do j=j0+1,j0+j1
-      write(6,*) '=====before Lxi testing ======='
-     ! write(6,*), 'v0(1,j)', v0(1,j)
-!      write(6,*), 'eta', eta
-      write(6,*) '==============================='
+
+!      ! write(6,*), 'v0(1,j)', v0(1,j)
+! !      write(6,*), 'eta', eta
+!       write(6,*) '==============================='
+      ! "LXI FROM ABOVE FOR COMPARISON
+      ! call Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct,qm2_struct, &
+      !                  qm2ds,qmmm_struct,&
+      !                  eta,vexp(1,i),cosmo_c_struct%solvent_model)
+
+
       call Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, qm2_struct,qm2ds,qmmm_struct, &
                        v0(1,j),eta,cosmo_c_struct%solvent_model) !L(xi) output in eta !!JAB
 
-      write(6,*) '=====after Lxi testing ======='
-      write(6,*), 'v0(1,j)', v0(1,j)
-      write(6,*), 'eta', eta
-      write(6,*) '==============================='     
+      write(6,*) '===== AFTER SECOND Lxi TESTING ======='
+      ! call print_1d(eta, 'eta')
+      ! write(6,*) '=====after Lxi testing ======='
+      ! write(6,*), 'v0(1,j)', v0(1,j)
+      ! write(6,*), 'eta', eta
+      ! write(6,*) '==============================='     
 
       f1=ddot(Ncis,v0(1,j),one,eta(1),one) &
          -ddot(Ncis,v0(1+Ncis,j),one,eta(1+Ncis),one)
+
+      ! write(6,*), '!!! !!! !!! f1', f1       
 
 
 ! CIS
       if (idav.eq.1) f1=ddot(Ncis,v0(1,j),one,eta(1),one) !E=<xi|L(xi)> now in f1 !!JAB
       call dcopy(2*Ncis,eta,one,xi,one)
       call daxpy(2*Ncis,-f1,v0(1,j),one,xi,one)
+      call print_1d(xi, 'xi')
       f2=ddot(Ncis,xi(1),one,xi(1),one)
+      ! write (6,*) 'f2', f2
       f3=ddot(Ncis,xi(1+Ncis),one,xi(1+Ncis),one)
+      ! write (6,*) 'f3', f3
 ! CIS
       if(idav.eq.1) then !Clear Y after Liouville equation
          f3=0.0 
          call clearing(Ncis,xi(1+Ncis))
          call clearing(Ncis,eta(1+Ncis))
       endif
+      write (6,*) 'ftol0', ftol0
+      write (6,*) 'e0', e0
+      write (6,*) 'ferr', ferr
+      write (6,*) 'ee2', ee2
 
       f2=f2+f3 !f(x) + f(y)
+      write (6,*) 'f2 +f3', f2+f3
+
       if(f2.le.ftol0) then ! Converged vector
+         write (6,*) '== HERE ftol0'
          n=n+1
          call dcopy(2*Ncis,v0(1,j0+n),one,v0(1,j),one) !Move converged vector to beginning
+         write (6,*) 'f1', f1
          e0(j0+n)= f1 !move converged energy to beginning
          ferr(j0+n)=abs(f2)+abs(f3) !
 
          if(lprint.gt.3) then
             write(6,"(3i5,1x,2f14.9,2g10.3,2x,A)") &
                j,n,m,raye(j-j0),f1,f2,f3,' Converged!'
-         end if
+      end if
 ! CIS
       else if(idav.eq.1) then       
 
@@ -933,6 +1011,7 @@ end do
                j,n,m,raye(j-j0),f1,f2,f3
          end if
       else
+         write (6,*) '== HERE else'
          if((nd1+m).eq.nd) goto 45
          m=m+1
 
@@ -945,22 +1024,25 @@ end do
          f4=1/sqrt(abs(f4))
          call dscal(Ncis,f4,vexp1(1,nd1+m),one)
 
-         if((nd1+m).eq.nd) goto 45
-         m=m+1
+         ! if((nd1+m).eq.nd) goto 45
+         ! m=m+1
 
-         do i=1,Ncis
-            vexp1(i,nd1+m)=(eta(i)+eta(i+Ncis)-f1*(v0(i,j)+v0(i+Ncis,j))) &
-               /(f1-ee2(i))
-         end do
+         ! do i=1,Ncis
+         !    vexp1(i,nd1+m)=(eta(i)+eta(i+Ncis)-f1*(v0(i,j)+v0(i+Ncis,j))) &
+         !       /(f1-ee2(i))
+         ! end do
 
-         f4=ddot(Ncis,vexp1(1,nd1+m),one,vexp1(1,nd1+m),one)
-         f4=1/sqrt(abs(f4))
-         call dscal(Ncis,f4,vexp1(1,nd1+m),one)
+         ! f4=ddot(Ncis,vexp1(1,nd1+m),one,vexp1(1,nd1+m),one)
+         ! f4=1/sqrt(abs(f4))
+         ! call dscal(Ncis,f4,vexp1(1,nd1+m),one)
          if(lprint.gt.1) write(6,"(3i5,1x,2f14.9,2g10.3)") &
             j,n,m,raye(j-j0),f1,f2,f3
       end if          
    end do
-!          
+     
+   write(6,*) "EIGENVALUES"
+   call print_1d(e0, 'e0')
+
 45 continue
         
    if((j1-n).eq.0) then
@@ -977,8 +1059,10 @@ end do
    if(lprint.gt.4) write(6,*) 'New perturbed m=',m
   
 15 continue
-
+   
+   
    do j=1+nd1,nd1+m
+      write(6,*) '== HERE after 15'
       f2=ddot(Ncis,vexp1(1,j),one,vexp1(1,j),one)
       f2=1/sqrt(abs(f2))
       call dscal(Ncis,f2,vexp1(1,j),one)

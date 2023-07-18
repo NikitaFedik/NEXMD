@@ -57,9 +57,9 @@ subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, &
     qm2ds%xi=0.d0
     call mo2site(qm2ds,u1,qm2ds%xi,qm2ds%eta) !Change basis of guess vector of Davidson from M.O to A.O
 
-    write (6,*) 'buildM'
+    ! write (6,*) 'buildM'
     
-    write(6,*), 'v1', v1 
+    ! write(6,*), 'v1', v1 
 
    ! write(6,*) 'Lxi ' !!JAB
 
@@ -160,23 +160,28 @@ subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, &
 
 ! !!---------- end of solvent models ----------------------------
 
-    ! write(6,*) 'qm2ds%xi before site2mo', qm2ds%xi !!
-    ! write(6,*) 'qm2ds%ets before site2mo', qm2ds%eta !!
-    ! call site2mo(qm2ds,qm2ds%xi,qm2ds%eta,v1);  !Change basis of xi again to M.O.
-    ! write(6,*) 'qm2ds%xi after site2mo', qm2ds%xi !!
-    ! write(6,*) 'qm2ds%eta after site2mo', qm2ds%eta !!
+    ! call print_1d(qm2ds%xi, 'qm2ds%xi before site2mo')  !!
+    ! call print_1d(qm2ds%eta, 'qm2ds%eta before site2mo')  !!
+    call site2mo(qm2ds,qm2ds%xi,qm2ds%eta,v1);  !Change basis of xi again to M.O.
+    ! call print_1d(qm2ds%xi, 'qm2ds%xi after site2mo')   !!
+    ! call print_1d(qm2ds%eta, 'qm2ds%eta after site2mo')  !!
+  !  call print_1d(v1, 'v1')
     ! write(6,*) 'Lxi here 2'
 
-
+   ! write(6,*) 'BEFORE LOOP FILLING Ex-Ey MO energies'
     ! u1 = eta
     ! v1 = vexp(1, i)
+
+   ! call print_1d(v1, 'v1')
+   ! call print_1d(u1, 'u1')
+  !  call print_1d(qm2ds%ehf, 'qm2ds%ehf')
     i=0
     do p=1,qm2ds%Np
-        ! write(6,*) 'p', p !!
+       ! write(6,*) 'p', p !!
         do h=qm2ds%Np+1,qm2ds%Nb
-            ! write(6,*) 'h', h !!
+           ! write(6,*) 'h', h !!
             i=i+1
-            ! write(6,*) 'i', i !!
+          !  write(6,*) 'i', i !!
             ! write(6,*) 'qm2ds%ehf(h)', qm2ds%ehf(h) !!
             ! write(6,*) 'qm2ds%ehf(p)', qm2ds%ehf(p)
             f=qm2ds%ehf(h)-qm2ds%ehf(p);
@@ -186,8 +191,11 @@ subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, &
             v1(i+qm2ds%Ncis)=-(v1(i+qm2ds%Ncis)+f*u1(i+qm2ds%Ncis))
         end do
     enddo
+    ! write(6,*) 'AFTER LOOP FILLING Ex-Ey MO energies'
+    ! call print_1d(v1, 'v1')
 
     write(6,*) '===== Lxi HERE 3 ====='
+    ! seems as copies
     do i=1,qm2ds%Nrpa
         qm2ds%temp1(i)=qm2ds%v0(i,1)
         qm2ds%temp2(i)=u1(i)
@@ -197,8 +205,10 @@ subroutine Lxi_testing(qm2_params,qmmm_nml,qmmm_mpi,cosmo_c_struct, &
 
    ! write(6,*) 'Mj', Mj
     if(qm2ds%Mj.gt.0) then
-
-        write(6,*) 'In the weird block' !!JAB
+    !!!!!
+    ! COULD BE BATCHING OR WILKINSON SHIFT FNS!!!
+    !!!!!
+        write(6,*) 'WEIRD BLOCK' !!JAB
         fs1=qm2ds%fs+qm2ds%e0(qm2ds%Mj)
         do j=1,qm2ds%Mj
             f1=fs1*(ddot(qm2ds%Ncis,qm2ds%v0(1,j),one,u1(1),one) &
